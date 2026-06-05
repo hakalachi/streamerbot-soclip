@@ -247,8 +247,15 @@
       }
     };
 
-    ws.onclose = function () {
-      status("can't reach Streamer.bot — is the WebSocket Server running? (Servers/Clients → WebSocket Server)", true);
+    ws.onclose = function (ev) {
+      // Streamer.bot closes with 4009 when authentication fails.
+      if (ev && ev.code === 4009) {
+        status(PASSWORD
+          ? "wrong WebSocket password"
+          : "server wants a password — add &password=... to this source URL, or untick Authentication on the WebSocket server", true);
+      } else {
+        status("can't reach Streamer.bot — is the WebSocket Server running? (Servers/Clients → WebSocket Server)", true);
+      }
       scheduleRetry();
     };
     ws.onerror = function () { /* onclose follows and handles it */ };
