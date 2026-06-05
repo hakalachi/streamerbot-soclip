@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SoClip overlay</title>
+<!--
+  SoClip — shoutout clip overlay for OBS.
+
+  Add this file as a Browser source (Local file) sized to your canvas
+  (e.g. 1920x1080). It connects to Streamer.bot's WebSocket server and plays
+  the clips that the "SoClip - Shoutout" action sends it.
+
+  Options go in the URL query string of the browser source, e.g.
+      overlay.html?position=center&width=560&volume=0.8
+
+    position  center | top | bottom | top-left | top-right | bottom-left | bottom-right   (default: center)
+    width     card width in px, 240–1280                                                  (default: 480)
+    volume    0.0 – 1.0                                                                   (default: 0.85)
+    host      Streamer.bot WebSocket host                                                 (default: 127.0.0.1)
+    port      Streamer.bot WebSocket port                                                 (default: 8080)
+    password  only needed if the WebSocket server has Authentication enabled
+    test=1    repeat a fake clip so you can position the card without firing chat
+-->
+<style>
+  :root {
+    --purple: #9146ff;
+    --card-w: 480px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: transparent; }
+  body { font-family: "Segoe UI", system-ui, -apple-system, sans-serif; }
+
+  #stage {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;        /* overridden by position classes */
+    justify-content: center;
+    padding: 40px;
+    pointer-events: none;
+  }
+  #stage.top          { align-items: flex-start; }
+  #stage.bottom       { align-items: flex-end; }
+  #stage.top-left     { align-items: flex-start; justify-content: flex-start; }
+  #stage.top-right    { align-items: flex-start; justify-content: flex-end; }
+  #stage.bottom-left  { align-items: flex-end;   justify-content: flex-start; }
+  #stage.bottom-right { align-items: flex-end;   justify-content: flex-end; }
+
+  #card {
+    width: var(--card-w);
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+    transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  }
+  #card.show { opacity: 1; transform: translateY(0) scale(1); }
+
+  #frame {
+    position: relative;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #0e0e10;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 0 0 3px var(--purple);
+  }
+  #video { display: block; width: 100%; aspect-ratio: 16/9; object-fit: contain; background: #000; }
+
+  #banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #1f1530 0%, #18181b 60%);
+    border-top: 2px solid var(--purple);
+  }
+  #avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 2px solid var(--purple);
+    background: #26262c;
+    flex: none;
+  }
+  #who { min-width: 0; color: #efeff1; }
+  #name { font-size: 19px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #name .at { color: var(--purple); }
+  #game { font-size: 13px; color: #adadb8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #game b { color: #d6c7ff; font-weight: 600; }
+
+  /* tiny status pill — only visible while there's a problem */
+  #status {
+    position: fixed;
+    top: 8px; left: 8px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    color: #efeff1;
+    background: rgba(20, 20, 24, 0.85);
+    border: 1px solid #3a3a40;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  #status.visible { opacity: 1; }
+  #status.bad { border-color: #e91916; }
+</style>
+</head>
+<body>
+  <div id="stage">
+    <div id="card">
+      <div id="frame">
+        <video id="video" playsinline></video>
+        <div id="banner">
+          <img id="avatar" alt="">
+          <div id="who">
+            <div id="name"><span class="at">@</span><span id="nameText"></span></div>
+            <div id="game">was last playing <b id="gameText"></b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="status"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var qs = new URLSearchParams(location.search);
+  var HOST     = qs.get("host") || "127.0.0.1";
+  var PORT     = qs.get("port") || "8080";
+  var PASSWORD = qs.get("password") || "";
+  var VOLUME   = Math.min(1, Math.max(0, parseFloat(qs.get("volume") || "0.85")));
+  var WIDTH    = Math.min(1280, Math.max(240, parseInt(qs.get("width") || "480", 10)));
+  var POSITION = qs.get("position") || "center";
+  var TEST     = qs.get("test") === "1";
+
+  document.documentElement.style.setProperty("--card-w", WIDTH + "px");
+  if (POSITION !== "center") document.getElementById("stage").className = POSITION;
+
+  var card     = document.getElementById("card");
+  var video    = document.getElementById("video");
+  var avatar   = document.getElementById("avatar");
+  var nameText = document.getElementById("nameText");
+  var gameText = document.getElementById("gameText");
+  var statusEl = document.getElementById("status");
+
+  function status(text, bad) {
+    if (!text) { statusEl.className = ""; return; }
+    statusEl.textContent = "SoClip: " + text;
+    statusEl.className = "visible" + (bad ? " bad" : "");
+  }
+
+  // ---------- playback queue ----------
+  var queue = [];
+  var playing = false;
+  var safetyTimer = null;
+
+  function enqueue(clip) {
+    queue.push(clip);
+    if (!playing) playNext();
+  }
+
+  function playNext() {
+    var clip = queue.shift();
+    if (!clip) { playing = false; return; }
+    playing = true;
+
+    nameText.textContent = clip.displayName || clip.login || "?";
+    gameText.textContent = clip.game || "something cool";
+    avatar.src = clip.avatarUrl || "";
+    video.volume = VOLUME;
+
+    if (clip._testStream) {
+      video.srcObject = clip._testStream;
+    } else {
+      video.srcObject = null;
+      video.src = clip.videoUrl;
+    }
+
+    card.classList.add("show");
+    video.play().catch(function (e) {
+      console.error("SoClip: play() failed", e);
+      finishClip();
+    });
+
+    // If the video stalls or 'ended' never fires, bail out anyway.
+    var limit = ((clip.duration && clip.duration > 0 ? clip.duration : 30) + 8) * 1000;
+    clearTimeout(safetyTimer);
+    safetyTimer = setTimeout(finishClip, limit);
+  }
+
+  function finishClip() {
+    clearTimeout(safetyTimer);
+    card.classList.remove("show");
+    setTimeout(function () {
+      video.pause();
+      video.removeAttribute("src");
+      video.srcObject = null;
+      video.load();
+      playNext();
+    }, 500); // wait for the fade-out
+  }
+
+  video.addEventListener("ended", finishClip);
+  video.addEventListener("error", function () {
+    console.error("SoClip: video error", video.error);
+    finishClip();
+  });
+
+  // ---------- Streamer.bot WebSocket ----------
+  var ws = null;
+  var retryMs = 1000;
+
+  function connect() {
+    status("connecting…");
+    try {
+      ws = new WebSocket("ws://" + HOST + ":" + PORT + "/");
+    } catch (e) {
+      scheduleRetry();
+      return;
+    }
+
+    ws.onopen = function () {
+      retryMs = 1000;
+      status(""); // assume open server; auth hello (if any) handled in onmessage
+    };
+
+    ws.onmessage = function (ev) {
+      var msg;
+      try { msg = JSON.parse(ev.data); } catch (e) { return; }
+
+      // Streamer.bot sends an authentication challenge on connect when
+      // "Require authentication" is enabled on the WebSocket server.
+      if (msg.authentication && msg.authentication.challenge) {
+        if (!PASSWORD) {
+          status("server wants a password — add &password=... to this source URL, or untick Authentication on the WebSocket server", true);
+          return;
+        }
+        authenticate(msg.authentication.salt, msg.authentication.challenge);
+        return;
+      }
+      if (msg.id === "soclip-auth") {
+        if (msg.status === "ok") status("");
+        else status("wrong WebSocket password", true);
+        return;
+      }
+
+      if (msg.type === "soclip.play" && msg.clip && msg.clip.videoUrl) {
+        enqueue(msg.clip);
+      }
+    };
+
+    ws.onclose = function () {
+      status("can't reach Streamer.bot — is the WebSocket Server running? (Servers/Clients → WebSocket Server)", true);
+      scheduleRetry();
+    };
+    ws.onerror = function () { /* onclose follows and handles it */ };
+  }
+
+  function scheduleRetry() {
+    setTimeout(connect, retryMs);
+    retryMs = Math.min(retryMs * 2, 10000);
+  }
+
+  function sha256b64(str) {
+    var bytes = new TextEncoder().encode(str);
+    return crypto.subtle.digest("SHA-256", bytes).then(function (buf) {
+      var bin = "";
+      var arr = new Uint8Array(buf);
+      for (var i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
+      return btoa(bin);
+    });
+  }
+
+  function authenticate(salt, challenge) {
+    sha256b64(PASSWORD + salt).then(function (secret) {
+      return sha256b64(secret + challenge);
+    }).then(function (auth) {
+      ws.send(JSON.stringify({ request: "Authenticate", id: "soclip-auth", authentication: auth }));
+    }).catch(function (e) {
+      console.error("SoClip: auth failed", e);
+      status("authentication error — see console", true);
+    });
+  }
+
+  connect();
+
+  // ---------- test mode ----------
+  function makeTestClip() {
+    var canvas = document.createElement("canvas");
+    canvas.width = 1280; canvas.height = 720;
+    var ctx = canvas.getContext("2d");
+    var t0 = performance.now();
+    (function draw(now) {
+      var t = (now - t0) / 1000;
+      var g = ctx.createLinearGradient(0, 0, 1280, 720);
+      g.addColorStop(0, "#1f1530");
+      g.addColorStop(1, "#0e0e10");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, 1280, 720);
+      ctx.fillStyle = "#9146ff";
+      ctx.beginPath();
+      ctx.arc(640 + Math.cos(t * 1.5) * 220, 360 + Math.sin(t * 2.1) * 120, 36, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#efeff1";
+      ctx.font = "bold 64px 'Segoe UI', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("SoClip test clip", 640, 340);
+      ctx.font = "28px 'Segoe UI', sans-serif";
+      ctx.fillStyle = "#adadb8";
+      ctx.fillText("a real clip plays here — size & position me, then remove ?test=1", 640, 400);
+      requestAnimationFrame(draw);
+    })(t0);
+    return {
+      displayName: "SomeStreamer",
+      login: "somestreamer",
+      game: "Just Chatting",
+      avatarUrl: "",
+      duration: 6,
+      videoUrl: "test",
+      _testStream: canvas.captureStream(30)
+    };
+  }
+
+  if (TEST) {
+    var fire = function () { enqueue(makeTestClip()); };
+    setTimeout(fire, 800);
+    setInterval(function () { if (!playing && queue.length === 0) fire(); }, 12000);
+  }
+})();
+</script>
+</body>
+</html>
