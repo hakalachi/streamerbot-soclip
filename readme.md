@@ -1,6 +1,6 @@
 # streamerbot-soclip
 
-**Current version: v1.2.0** — **[⬇ Download install.sb](https://github.com/hakalachi/streamerbot-soclip/releases/latest/download/install.sb)** · see [CHANGELOG.md](CHANGELOG.md) for what's new.
+**Current version: v1.3.0** — **[⬇ Download install.sb](https://github.com/hakalachi/streamerbot-soclip/releases/latest/download/install.sb)** · see [CHANGELOG.md](CHANGELOG.md) for what's new.
 
 **Shoutouts that actually show the streamer.** Type `!so somestreamer` (or get raided) and one of their best Twitch clips plays right on your stream — with their name and the game they were last playing — while a shoutout message goes to chat.
 
@@ -35,7 +35,7 @@ The overlay listens to Streamer.bot over a local WebSocket.
 
 ### Step 3 — Add the overlay to OBS (~2 minutes)
 
-1. Download **[overlay.html](https://github.com/hakalachi/streamerbot-soclip/releases/latest/download/overlay.html)** and **[config.js](https://github.com/hakalachi/streamerbot-soclip/releases/latest/download/config.js)** (clicking the links downloads them). Put them **together in one folder** that can stay put (e.g. next to your OBS scene collection — they must not move later).
+1. Download **[overlay.html](https://github.com/hakalachi/streamerbot-soclip/releases/latest/download/overlay.html)**, **[config.js](https://github.com/hakalachi/streamerbot-soclip/releases/latest/download/config.js)** and **[config.html](https://github.com/hakalachi/streamerbot-soclip/releases/latest/download/config.html)** (clicking the links downloads them). Put all three **together in one folder** that can stay put (e.g. next to your OBS scene collection — they must not move later).
 2. In OBS: **Sources → + → Browser**, name it `SoClip`.
 3. Tick **Local file** and pick `overlay.html`. Set **Width** and **Height** to your canvas size (usually `1920` × `1080`).
 4. *(Recommended)* In the source's properties, set **Control audio via OBS** so the clip sound shows up in your mixer.
@@ -44,7 +44,16 @@ The overlay listens to Streamer.bot over a local WebSocket.
 
 If your WebSocket server uses the defaults (port `8080`, no Authentication) and you're happy with the card in the **center**, skip this step — you're done.
 
-Otherwise, open `config.js` in **Notepad** (right-click it → *Open with* → *Notepad*). Every setting is in there with a plain-English comment:
+Otherwise, **double-click `config.html`** — it opens in your browser as a friendly settings form:
+
+- it fills itself in from your current `config.js`
+- **⚡ Test connection** checks your port & password against Streamer.bot on the spot — green check or a plain-English reason
+- a **live preview** of the card updates as you pick position, size, accent color and font
+- **💾 Save config.js** writes a perfectly-formed file — save it over the old one, nothing to type, no syntax to break
+
+Then tell OBS to reload it: right-click the `SoClip` source → **Properties** → **Refresh cache of current page**.
+
+Prefer a text editor? `config.js` works the same as ever — every setting has a plain-English comment:
 
 ```js
 port: 8080,          // the WebSocket server's port
@@ -148,6 +157,7 @@ Change values, click **Compile**, close. Done.
 - `streamer-bot/shoutout-clip.cs` — the single source of truth for the action code.
 - `overlay.html` — the OBS browser source. Talks to Streamer.bot's WebSocket server, queues clips, handles the (optional) auth handshake.
 - `config.js` — the streamer-edited settings file; `overlay.html` loads it from the same folder. Ships with all defaults spelled out. Optional at runtime (missing file = defaults), and URL query options override it.
+- `config.html` — the settings builder UI. Self-contained; pre-fills from `config.js` in the same folder, live-previews the card, tests the Streamer.bot connection with the overlay's real handshake (same subscribe + auth code), and generates a `config.js` with values safely JSON-escaped. Keep its generated template in sync with `config.js`'s comments.
 - `install.sb` — **generated, don't hand-edit.** Rebuild with `tools/build-install-sb.ps1`.
 - `tools/build-install-sb.ps1` — packs the `.cs` into the Streamer.bot import format: `base64("SBAE" + gzip(exportJson))`. No manual re-export from Streamer.bot needed, ever.
 - `tools/compile-check.ps1` — compiles the `.cs` against a stub of the CPH API surface using the legacy C# 5 compiler. Run it after any code change; it catches typos and accidental use of modern syntax (the script intentionally avoids `$"..."` / `?.` so this check works on any Windows box).
@@ -158,7 +168,7 @@ Change values, click **Compile**, close. Done.
 2. `powershell -File tools\compile-check.ps1`
 3. `powershell -File tools\build-install-sb.ps1 -Version X.Y.Z`
 4. Bump the version in this README + add a `CHANGELOG.md` entry (SemVer).
-5. Tag and release: `git tag vX.Y.Z && git push --tags`, then a GitHub Release with the changelog section, attaching **install.sb, overlay.html and config.js** — the README's download links point at `releases/latest/download/<file>`, so every release must carry all three.
+5. Tag and release: `git tag vX.Y.Z && git push --tags`, then a GitHub Release with the changelog section, attaching **install.sb, overlay.html, config.js and config.html** — the README's download links point at `releases/latest/download/<file>`, so every release must carry all four.
 
 ### Forking
 

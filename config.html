@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SoClip — settings builder</title>
+<!--
+  SoClip settings builder.
+
+  Double-click this file (it opens in your browser), fill in the form, and
+  click "Save config.js" — it writes a perfectly-formed config.js so you
+  never have to hand-edit one in Notepad.
+
+  Keep this file in the same folder as overlay.html and config.js: that way
+  it pre-fills the form from your current settings, and saving over the old
+  config.js is one click.
+-->
+<style>
+  :root {
+    --purple: #9146ff;
+    --bg: #0e0e10;
+    --panel: #18181b;
+    --panel-2: #1f1f23;
+    --line: #2e2e35;
+    --text: #efeff1;
+    --muted: #adadb8;
+    --good: #2ecc71;
+    --bad: #ff5252;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    padding: 28px 20px 60px;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; }
+
+  header { margin-bottom: 22px; }
+  header h1 { font-size: 26px; font-weight: 700; }
+  header h1 .so { color: var(--purple); }
+  header p { color: var(--muted); margin-top: 4px; font-size: 14px; }
+  #loaded-note {
+    display: none;
+    margin-top: 10px; padding: 8px 12px;
+    background: rgba(46, 204, 113, .08);
+    border: 1px solid rgba(46, 204, 113, .35);
+    border-radius: 8px; font-size: 13px; color: var(--good);
+  }
+
+  .grid { display: grid; grid-template-columns: minmax(380px, 1fr) minmax(380px, 1fr); gap: 20px; }
+  @media (max-width: 840px) { .grid { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 20px;
+  }
+  .panel + .panel { margin-top: 20px; }
+  .panel h2 {
+    font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--purple); margin-bottom: 14px;
+  }
+
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+  .field .hint { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 6px; }
+  input[type="text"], input[type="number"], input[type="password"] {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 14px;
+    padding: 9px 11px;
+    outline: none;
+  }
+  input:focus { border-color: var(--purple); }
+  input.invalid { border-color: var(--bad); }
+
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+
+  /* position picker */
+  .pos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .pos-grid button {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 12px;
+    padding: 10px 4px;
+    cursor: pointer;
+  }
+  .pos-grid button:hover { border-color: var(--purple); color: var(--text); }
+  .pos-grid button.active { background: var(--purple); border-color: var(--purple); color: #fff; font-weight: 600; }
+  .pos-grid .spacer { visibility: hidden; }
+
+  /* sliders */
+  .slider-row { display: flex; align-items: center; gap: 12px; }
+  .slider-row input[type="range"] { flex: 1; accent-color: var(--purple); }
+  .slider-row output { min-width: 64px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+
+  /* accent */
+  .accent-row { display: flex; gap: 10px; align-items: center; }
+  .accent-row input[type="color"] {
+    width: 46px; height: 38px; padding: 2px;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
+  }
+  .accent-row input[type="text"] { flex: 1; }
+  .swatches { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .swatches button {
+    width: 26px; height: 26px; border-radius: 6px; border: 1px solid rgba(255,255,255,.18); cursor: pointer;
+  }
+  .swatches button:hover { transform: scale(1.12); }
+
+  /* buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--purple);
+    border: none; border-radius: 9px;
+    color: #fff; font-size: 14px; font-weight: 600;
+    padding: 11px 18px; cursor: pointer;
+  }
+  .btn:hover { filter: brightness(1.12); }
+  .btn.secondary { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); }
+  .btn.secondary:hover { border-color: var(--purple); filter: none; }
+
+  #test-status { margin-top: 10px; font-size: 13px; min-height: 18px; }
+  #test-status.ok  { color: var(--good); }
+  #test-status.err { color: var(--bad); }
+
+  /* preview */
+  #preview-stage {
+    position: relative;
+    height: 300px;
+    border-radius: 10px;
+    overflow: hidden;
+    background:
+      radial-gradient(700px 380px at 30% 0%, #221638, #131318 70%);
+    border: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+  }
+  #preview-stage.top          { align-items: flex-start; }
+  #preview-stage.bottom       { align-items: flex-end; }
+  #preview-stage.top-left     { align-items: flex-start; justify-content: flex-start; }
+  #preview-stage.top-right    { align-items: flex-start; justify-content: flex-end; }
+  #preview-stage.bottom-left  { align-items: flex-end;   justify-content: flex-start; }
+  #preview-stage.bottom-right { align-items: flex-end;   justify-content: flex-end; }
+
+  #pcard { transform-origin: center; }
+  #preview-stage.top #pcard, #preview-stage.top-left #pcard, #preview-stage.top-right #pcard { transform-origin: top; }
+  #preview-stage.bottom #pcard, #preview-stage.bottom-left #pcard, #preview-stage.bottom-right #pcard { transform-origin: bottom; }
+
+  #pframe {
+    border-radius: 14px; overflow: hidden; background: #0e0e10;
+    box-shadow: 0 12px 40px rgba(0,0,0,.55), 0 0 0 3px var(--p-accent, #9146ff);
+  }
+  #pvideo {
+    aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #19122b, #0b0b0e);
+    color: #5e5e6a; font-size: 15px; letter-spacing: .04em;
+  }
+  #pbanner {
+    display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+    background: linear-gradient(135deg, #1f1530 0%, #18181b 60%);
+    border-top: 2px solid var(--p-accent, #9146ff);
+    font-family: var(--p-font, "Segoe UI", system-ui, sans-serif);
+  }
+  #pavatar { width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--p-accent, #9146ff); background: #26262c; flex: none; }
+  #pname { font-size: 19px; font-weight: 700; line-height: 1.2; }
+  #pname .at { color: var(--p-accent, #9146ff); }
+  #pgame { font-size: 13px; color: #adadb8; }
+  #pgame b { color: var(--p-soft, #d6c7ff); font-weight: 600; }
+
+  /* save area */
+  #actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  #save-status { margin-top: 12px; font-size: 13px; color: var(--muted); min-height: 18px; }
+  #save-status.ok { color: var(--good); }
+  #output {
+    display: none;
+    width: 100%; margin-top: 12px;
+    background: var(--panel-2); color: var(--muted);
+    border: 1px solid var(--line); border-radius: 8px;
+    font-family: Consolas, monospace; font-size: 12px;
+    padding: 10px; height: 180px; white-space: pre; overflow: auto;
+  }
+  .steps { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .steps b { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="so">SoClip</span> settings builder</h1>
+    <p>Fill in the form, test the connection, save — no hand-editing, no lost quotes.</p>
+    <div id="loaded-note">Loaded your current settings from config.js ✓</div>
+  </header>
+
+  <div class="grid">
+    <div><!-- left column -->
+      <div class="panel">
+        <h2>Connection to Streamer.bot</h2>
+        <div class="field row">
+          <div>
+            <label for="f-port">Port <span class="hint">Servers/Clients → WebSocket Server</span></label>
+            <input type="number" id="f-port" min="1" max="65535" value="8080">
+          </div>
+          <div>
+            <label for="f-host">Host <span class="hint">leave as-is unless remote</span></label>
+            <input type="text" id="f-host" value="127.0.0.1">
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-password">Password <span class="hint">only if "Authentication" is ticked</span></label>
+          <input type="password" id="f-password" autocomplete="off" placeholder="leave empty if Authentication is off">
+        </div>
+        <button class="btn secondary" id="btn-test" type="button">⚡ Test connection</button>
+        <div id="test-status"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Card position &amp; size</h2>
+        <div class="field">
+          <label>Where the card appears</label>
+          <div class="pos-grid" id="pos-grid">
+            <button data-pos="top-left">top left</button>
+            <button data-pos="top">top</button>
+            <button data-pos="top-right">top right</button>
+            <button class="spacer" tabindex="-1"></button>
+            <button data-pos="center" class="active">center</button>
+            <button class="spacer" tabindex="-1"></button>
+            <button data-pos="bottom-left">bottom left</button>
+            <button data-pos="bottom">bottom</button>
+            <button data-pos="bottom-right">bottom right</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-width">Card width</label>
+          <div class="slider-row">
+            <input type="range" id="f-width" min="240" max="1280" step="10" value="480">
+            <output id="o-width">480 px</output>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-volume">Clip volume</label>
+          <div class="slider-row">
+            <input type="range" id="f-volume" min="0" max="1" step="0.05" value="0.85">
+            <output id="o-volume">85%</output>
+          </div>
+        </div>
+        <div class="field">
+          <label><input type="checkbox" id="f-test" style="accent-color: var(--purple); margin-right: 8px;">Test mode <span class="hint">loop a fake clip so you can position the card — turn off when done</span></label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Branding</h2>
+        <div class="field">
+          <label for="f-accent-text">Accent color <span class="hint">frame, name &amp; highlights</span></label>
+          <div class="accent-row">
+            <input type="color" id="f-accent-pick" value="#9146ff">
+            <input type="text" id="f-accent-text" value="#9146ff" spellcheck="false">
+          </div>
+          <div class="swatches" id="swatches"></div>
+        </div>
+        <div class="field">
+          <label for="f-font">Font <span class="hint">any <a href="https://fonts.google.com" target="_blank" style="color: var(--purple);">Google Font</a> name, or a font installed on your PC</span></label>
+          <input type="text" id="f-font" list="font-list" placeholder="leave empty for the standard font" spellcheck="false">
+          <datalist id="font-list">
+            <option>Poppins</option><option>Montserrat</option><option>Oswald</option>
+            <option>Bebas Neue</option><option>Bangers</option><option>Lobster</option>
+            <option>Pacifico</option><option>Comic Neue</option><option>Press Start 2P</option>
+            <option>Orbitron</option><option>Russo One</option><option>Luckiest Guy</option>
+          </datalist>
+        </div>
+      </div>
+    </div>
+
+    <div><!-- right column -->
+      <div class="panel">
+        <h2>Live preview</h2>
+        <div id="preview-stage">
+          <div id="pcard">
+            <div id="pframe">
+              <div id="pvideo">the clip plays here</div>
+              <div id="pbanner">
+                <img id="pavatar" src="https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_300x300.png" alt="">
+                <div>
+                  <div id="pname"><span class="at">@</span>SomeStreamer</div>
+                  <div id="pgame">was last playing <b>Just Chatting</b></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Save</h2>
+        <div class="steps">
+          <b>1.</b> Click <b>Save config.js</b> and save it <b>next to overlay.html</b> (replace the old one).<br>
+          <b>2.</b> In OBS: right-click the SoClip source → <b>Properties</b> → <b>Refresh cache of current page</b>.
+        </div>
+        <div id="actions">
+          <button class="btn" id="btn-save" type="button">💾 Save config.js</button>
+          <button class="btn secondary" id="btn-copy" type="button">📋 Copy instead</button>
+        </div>
+        <div id="save-status"></div>
+        <textarea id="output" readonly spellcheck="false"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ---------- prefill from an existing config.js ----------
+  var existing = (typeof window.SOCLIP === "object" && window.SOCLIP) || {};
+  if (window.SOCLIP) $("loaded-note").style.display = "block";
+
+  function prefill() {
+    if (existing.port     != null) $("f-port").value = existing.port;
+    if (existing.host     != null) $("f-host").value = existing.host;
+    if (existing.password != null) $("f-password").value = existing.password;
+    if (existing.width    != null) $("f-width").value = existing.width;
+    if (existing.volume   != null) $("f-volume").value = existing.volume;
+    if (existing.test     != null) $("f-test").checked = existing.test === true || existing.test === "true";
+    if (existing.font     != null) $("f-font").value = existing.font;
+    if (existing.accent) {
+      $("f-accent-text").value = existing.accent;
+      var hex = toHex(existing.accent);
+      if (hex) $("f-accent-pick").value = hex;
+    }
+    if (existing.position) {
+      var btns = document.querySelectorAll("#pos-grid button[data-pos]");
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].classList.toggle("active", btns[i].getAttribute("data-pos") === existing.position);
+      }
+    }
+  }
+
+  // ---------- read the form ----------
+  function activePos() {
+    var b = document.querySelector("#pos-grid button.active");
+    return b ? b.getAttribute("data-pos") : "center";
+  }
+  function readForm() {
+    return {
+      port:     Math.min(65535, Math.max(1, parseInt($("f-port").value, 10) || 8080)),
+      password: $("f-password").value,
+      host:     $("f-host").value.trim() || "127.0.0.1",
+      position: activePos(),
+      width:    Math.min(1280, Math.max(240, parseInt($("f-width").value, 10) || 480)),
+      volume:   Math.min(1, Math.max(0, parseFloat($("f-volume").value) || 0)),
+      accent:   validColor($("f-accent-text").value.trim()) ? $("f-accent-text").value.trim() : "#9146ff",
+      font:     $("f-font").value.trim(),
+      test:     $("f-test").checked
+    };
+  }
+
+  // ---------- color helpers ----------
+  function validColor(c) {
+    if (!c) return false;
+    var s = new Option().style;
+    s.color = c;
+    return s.color !== "";
+  }
+  function toRgb(c) {
+    var probe = document.createElement("span");
+    probe.style.color = c;
+    probe.style.display = "none";
+    document.body.appendChild(probe);
+    var m = getComputedStyle(probe).color.match(/\d+(\.\d+)?/g);
+    document.body.removeChild(probe);
+    return m ? m.slice(0, 3).map(Number) : null;
+  }
+  function toHex(c) {
+    if (!validColor(c)) return null;
+    var rgb = toRgb(c);
+    if (!rgb) return null;
+    return "#" + rgb.map(function (n) { return ("0" + Math.round(n).toString(16)).slice(-2); }).join("");
+  }
+
+  // ---------- live preview ----------
+  var fontLink = null;
+  function updatePreview() {
+    var v = readForm();
+    var root = document.documentElement;
+
+    root.style.setProperty("--p-accent", v.accent);
+    var rgb = toRgb(v.accent);
+    if (rgb) {
+      var tint = rgb.map(function (c) { return Math.round(c + (255 - c) * 0.6); });
+      root.style.setProperty("--p-soft", "rgb(" + tint.join(",") + ")");
+    }
+    $("f-accent-text").classList.toggle("invalid", !validColor($("f-accent-text").value.trim()));
+
+    if (v.font) {
+      var fam = v.font.replace(/["']/g, "");
+      if (!fontLink || fontLink.getAttribute("data-fam") !== fam) {
+        if (fontLink) fontLink.remove();
+        fontLink = document.createElement("link");
+        fontLink.rel = "stylesheet";
+        fontLink.setAttribute("data-fam", fam);
+        fontLink.href = "https://fonts.googleapis.com/css2?family="
+          + encodeURIComponent(fam).replace(/%20/g, "+") + ":wght@400;600;700&display=swap";
+        document.head.appendChild(fontLink);
+      }
+      root.style.setProperty("--p-font", '"' + fam + '", "Segoe UI", system-ui, sans-serif');
+    } else {
+      root.style.removeProperty("--p-font");
+    }
+
+    $("preview-stage").className = v.position === "center" ? "" : v.position;
+    var stage = $("preview-stage");
+    var scale = Math.min(0.62, (stage.clientWidth - 36) / v.width);
+    $("pcard").style.width = v.width + "px";
+    $("pcard").style.transform = "scale(" + scale + ")";
+    // keep the scaled card inside the stage box
+    $("pcard").style.margin = (-(1 - scale) * 0) + "px";
+
+    $("o-width").textContent = v.width + " px";
+    $("o-volume").textContent = Math.round(v.volume * 100) + "%";
+  }
+
+  // ---------- generate config.js ----------
+  function buildConfig(v) {
+    return [
+      '/* ===================================================================',
+      '   SoClip overlay settings',
+      '   ===================================================================',
+      '   Generated by config.html on ' + new Date().toLocaleDateString() + ' — re-open config.html any',
+      '   time to change these with a friendly UI (it reads this file).',
+      '',
+      '   Hand-editing works too: edit a value, save, then refresh the source',
+      '   in OBS: right-click the SoClip source -> Properties -> "Refresh',
+      '   cache of current page".',
+      '',
+      '   Keep this file in the SAME FOLDER as overlay.html.',
+      '   =================================================================== */',
+      '',
+      'window.SOCLIP = {',
+      '',
+      '  /* ---- connecting to Streamer.bot -------------------------------- */',
+      '',
+      '  port: ' + v.port + ',          // the WebSocket server\'s port',
+      '  password: ' + JSON.stringify(v.password) + ',  // only if "Authentication" is ticked',
+      '  host: ' + JSON.stringify(v.host) + ',   // only if Streamer.bot runs on a different computer',
+      '',
+      '  /* ---- how the clip card looks ------------------------------------ */',
+      '',
+      '  position: ' + JSON.stringify(v.position) + ',  // center, top, bottom, top-left, top-right, bottom-left, bottom-right',
+      '  width: ' + v.width + ',          // card width in pixels (240-1280)',
+      '  volume: ' + v.volume + ',        // clip volume: 0.0 (mute) to 1.0 (full)',
+      '',
+      '  /* ---- branding ---------------------------------------------------- */',
+      '',
+      '  accent: ' + JSON.stringify(v.accent) + ',   // frame + name color',
+      '  font: ' + JSON.stringify(v.font) + ',       // Google Font name or installed font; empty = standard',
+      '',
+      '  /* ---- positioning helper -------------------------------------------',
+      '     true = a fake clip loops so you can move and resize the card',
+      '     without spamming your chat. Set back to false when done. */',
+      '',
+      '  test: ' + v.test,
+      '',
+      '};',
+      ''
+    ].join("\n");
+  }
+
+  // ---------- save / copy ----------
+  function setSaveStatus(text, ok) {
+    var el = $("save-status");
+    el.textContent = text;
+    el.className = ok ? "ok" : "";
+  }
+
+  async function save() {
+    var content = buildConfig(readForm());
+    if (window.showSaveFilePicker) {
+      try {
+        var handle = await window.showSaveFilePicker({
+          suggestedName: "config.js",
+          types: [{ description: "JavaScript config", accept: { "text/javascript": [".js"] } }]
+        });
+        var writable = await handle.createWritable();
+        await writable.write(content);
+        await writable.close();
+        setSaveStatus("Saved ✓ — now refresh the browser source in OBS (Properties → Refresh cache of current page).", true);
+        return;
+      } catch (e) {
+        if (e && e.name === "AbortError") return; // user cancelled the dialog
+        // SecurityError etc. — fall through to a plain download
+      }
+    }
+    var blob = new Blob([content], { type: "text/javascript" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "config.js";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setSaveStatus("Downloaded ✓ — move it next to overlay.html (replace the old one), then refresh the source in OBS.", true);
+  }
+
+  function copy() {
+    var content = buildConfig(readForm());
+    var out = $("output");
+    out.style.display = "block";
+    out.value = content;
+    out.select();
+    var done = function () {
+      setSaveStatus("Copied ✓ — paste it into config.js (replacing everything), save, then refresh the source in OBS.", true);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(content).then(done, function () { document.execCommand("copy"); done(); });
+    } else {
+      document.execCommand("copy");
+      done();
+    }
+  }
+
+  // ---------- test connection (the overlay's real handshake) ----------
+  function bytesToB64(arr) {
+    var bin = "";
+    for (var i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
+    return btoa(bin);
+  }
+  var SHA_K = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+  ];
+  function sha256js(bytes) {
+    function rotr(x, n) { return (x >>> n) | (x << (32 - n)); }
+    var H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+    var len = bytes.length;
+    var padded = new Uint8Array((((len + 8) >> 6) << 6) + 64);
+    padded.set(bytes);
+    padded[len] = 0x80;
+    var dv = new DataView(padded.buffer);
+    dv.setUint32(padded.length - 8, Math.floor((len * 8) / 0x100000000));
+    dv.setUint32(padded.length - 4, (len * 8) >>> 0);
+    var w = new Array(64);
+    for (var off = 0; off < padded.length; off += 64) {
+      var i;
+      for (i = 0; i < 16; i++) w[i] = dv.getUint32(off + i * 4);
+      for (i = 16; i < 64; i++) {
+        var s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+        var s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+        w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+      }
+      var a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+      for (i = 0; i < 64; i++) {
+        var S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+        var ch = (e & f) ^ (~e & g);
+        var t1 = (h + S1 + ch + SHA_K[i] + w[i]) >>> 0;
+        var S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+        var maj = (a & b) ^ (a & c) ^ (b & c);
+        var t2 = (S0 + maj) >>> 0;
+        h = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+      }
+      H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0; H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;
+      H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0; H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;
+    }
+    var out = new Uint8Array(32);
+    var odv = new DataView(out.buffer);
+    for (var j = 0; j < 8; j++) odv.setUint32(j * 4, H[j]);
+    return out;
+  }
+  function sha256b64(str) {
+    var bytes = new TextEncoder().encode(str);
+    if (window.crypto && window.crypto.subtle && window.crypto.subtle.digest) {
+      return crypto.subtle.digest("SHA-256", bytes).then(function (buf) {
+        return bytesToB64(new Uint8Array(buf));
+      });
+    }
+    return Promise.resolve(bytesToB64(sha256js(bytes)));
+  }
+
+  var testWs = null;
+  function setTestStatus(text, cls) {
+    var el = $("test-status");
+    el.textContent = text;
+    el.className = cls || "";
+  }
+  function testConnection() {
+    var v = readForm();
+    setTestStatus("connecting to ws://" + v.host + ":" + v.port + " …");
+    try { if (testWs) testWs.close(); } catch (e) {}
+    var done = false;
+    var ws;
+    function finish(ok, text) {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      setTestStatus(text, ok ? "ok" : "err");
+      try { ws.close(); } catch (e) {}
+    }
+    var timer = setTimeout(function () {
+      finish(false, "no response — is Streamer.bot's WebSocket Server running on that host/port?");
+    }, 6000);
+    try {
+      ws = testWs = new WebSocket("ws://" + v.host + ":" + v.port + "/");
+    } catch (e) {
+      finish(false, "couldn't open a connection: " + e.message);
+      return;
+    }
+    ws.onmessage = function (ev) {
+      var msg;
+      try { msg = JSON.parse(ev.data); } catch (e) { return; }
+      if (msg.authentication && msg.authentication.challenge) {
+        if (!v.password) {
+          finish(false, "the server wants a password — fill in the Password field (or untick Authentication in Streamer.bot)");
+          return;
+        }
+        sha256b64(v.password + msg.authentication.salt).then(function (secret) {
+          return sha256b64(secret + msg.authentication.challenge);
+        }).then(function (auth) {
+          ws.send(JSON.stringify({ request: "Authenticate", id: "cfg-auth", authentication: auth }));
+        }).catch(function (e) {
+          finish(false, "couldn't compute the auth hash: " + e.message);
+        });
+        return;
+      }
+      if (msg.request === "Hello") {
+        finish(true, "connected ✓ (no password needed) — found Streamer.bot " + (msg.info && msg.info.version ? "v" + msg.info.version : ""));
+        return;
+      }
+      if (msg.id === "cfg-auth") {
+        if (msg.status === "ok") finish(true, "connected & password accepted ✓");
+        else finish(false, "wrong password");
+        return;
+      }
+    };
+    ws.onclose = function (ev) {
+      if (done) return;
+      if (ev && ev.code === 4009) finish(false, v.password ? "wrong password" : "the server wants a password — fill in the Password field");
+      else if (ev && ev.code >= 4000 && ev.reason) finish(false, "Streamer.bot closed the connection: " + ev.reason);
+      else finish(false, "couldn't reach Streamer.bot — check that the WebSocket Server is running on that host/port");
+    };
+    ws.onerror = function () { /* onclose follows */ };
+  }
+
+  // ---------- wire up ----------
+  var swatchColors = ["#9146ff", "#ff4757", "#ffa502", "#2ed573", "#1e90ff", "#ff6b81", "#f1c40f", "#00d2d3", "#ffffff"];
+  swatchColors.forEach(function (c) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.style.background = c;
+    b.title = c;
+    b.addEventListener("click", function () {
+      $("f-accent-text").value = c;
+      $("f-accent-pick").value = toHex(c) || "#9146ff";
+      updatePreview();
+    });
+    $("swatches").appendChild(b);
+  });
+
+  document.querySelectorAll("#pos-grid button[data-pos]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      document.querySelectorAll("#pos-grid button[data-pos]").forEach(function (x) { x.classList.remove("active"); });
+      b.classList.add("active");
+      updatePreview();
+    });
+  });
+
+  $("f-accent-pick").addEventListener("input", function () {
+    $("f-accent-text").value = $("f-accent-pick").value;
+    updatePreview();
+  });
+  $("f-accent-text").addEventListener("input", function () {
+    var hex = toHex($("f-accent-text").value.trim());
+    if (hex) $("f-accent-pick").value = hex;
+    updatePreview();
+  });
+
+  ["f-port", "f-host", "f-password", "f-width", "f-volume", "f-font", "f-test"].forEach(function (id) {
+    $(id).addEventListener("input", updatePreview);
+  });
+
+  $("btn-test").addEventListener("click", testConnection);
+  $("btn-save").addEventListener("click", save);
+  $("btn-copy").addEventListener("click", copy);
+  window.addEventListener("resize", updatePreview);
+
+  // expose for automated testing
+  window.__soclipConfigTool = { readForm: readForm, buildConfig: buildConfig };
+
+  prefill();
+  updatePreview();
+})();
+</script>
+</body>
+</html>

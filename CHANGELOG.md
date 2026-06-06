@@ -2,6 +2,26 @@
 
 All notable changes to this project. Versioning follows [SemVer](https://semver.org/).
 
+## v1.3.0 — 2026-06-06
+
+No more hand-editing: a point-and-click settings builder.
+
+- **New `config.html`** — double-click it and configure SoClip in your
+  browser: pre-fills from your current `config.js`, a position picker and
+  sliders instead of typed values, color swatches + picker for the accent,
+  a Google-Fonts-aware font box, and a **live preview** of the card that
+  updates as you change things.
+- **⚡ Test connection** — runs the overlay's real Streamer.bot handshake
+  (connect → authenticate → subscribe) right from the form and tells you in
+  plain English what's wrong: unreachable, needs a password, wrong password,
+  or connected ✓.
+- **💾 Save config.js** — generates a perfectly-formed file (passwords and
+  fonts are JSON-escaped, so a `"` or `\` in a password can't break it) and
+  saves straight over the old one; falls back to a download or
+  copy-to-clipboard on browsers without the save dialog.
+- `config.js` stays fully hand-editable — the builder reads and writes the
+  same commented format.
+
 ## v1.2.0 — 2026-06-06
 
 Brand the card to match your stream.
