@@ -26,7 +26,8 @@ The overlay listens to Streamer.bot over a local WebSocket.
 
 1. In Streamer.bot go to **Servers/Clients → WebSocket Server**.
 2. It should say it's running on `127.0.0.1:8080` (the default). If it isn't running, click **Start Server** and tick **Auto Start**.
-3. If **Authentication** is enabled, either untick it, or note the password — you'll add it to the overlay URL in the next step.
+3. Using a different port (or address)? Note it — you'll add `port=` to the overlay URL in the next step.
+4. If **Authentication** is enabled, either untick it, or note the password — you'll add it to the overlay URL in the next step.
 
 ### Step 3 — Add the overlay to OBS (~2 minutes)
 
@@ -35,12 +36,12 @@ The overlay listens to Streamer.bot over a local WebSocket.
 3. Tick **Local file** and pick `overlay.html`. Set **Width** and **Height** to your canvas size (usually `1920` × `1080`).
 4. *(Recommended)* In the source's properties, set **Control audio via OBS** so the clip sound shows up in your mixer.
 
-The card sits in the **center** by default and that's all most people need — if so, you're done with this step.
+If your WebSocket server uses the defaults (port `8080`, no Authentication) and you're happy with the card in the **center**, you're done with this step.
 
-Want options (position, size, volume, test mode)? OBS doesn't allow query strings on *Local file* sources, so untick **Local file** and put a `file:///` path with options in the **URL** box instead:
+Everything else — a **different port**, a **password**, position, size, volume, test mode — is set with options on the overlay URL. OBS doesn't allow query strings on *Local file* sources, so untick **Local file** and put a `file:///` path with options in the **URL** box instead:
 
 ```
-file:///C:/path/to/overlay.html?position=bottom-right&width=420&volume=0.7
+file:///C:/path/to/overlay.html?port=8990&password=hunter2&position=bottom-right
 ```
 
 To position the card without spamming your chat, temporarily add `&test=1` — a fake clip loops every few seconds while you drag things around. Remove it when you're happy.
@@ -96,7 +97,7 @@ Change values, click **Compile**, close. Done.
 
 | Symptom | Try this |
 | --- | --- |
-| Chat message appears, but no clip on stream | The overlay isn't hearing Streamer.bot. Check Step 2 (WebSocket server running?). If Authentication is on, pass `password` in the overlay URL or turn it off. |
+| Chat message appears, but no clip on stream | The overlay isn't hearing Streamer.bot. Check Step 2 (WebSocket server running?). On a non-default port, pass `port=` in the overlay URL. If Authentication is on, pass `password` too (or turn it off). |
 | Tiny red badge in the overlay's top-left corner | That's the overlay telling you exactly what's wrong (can't reach Streamer.bot / wrong password). Fix what it says; it disappears when healthy. |
 | "Couldn't find a Twitch channel called …" | Typo in the name, or the account is banned/deleted. |
 | Clip plays but silent | In OBS, check the source's **Control audio via OBS** setting and the mixer. Also check `volume` in the overlay URL. |
