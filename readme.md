@@ -1,6 +1,6 @@
 # streamerbot-soclip
 
-**Current version: v1.0.0** — see [CHANGELOG.md](CHANGELOG.md) for what's new.
+**Current version: v1.0.0** — **[⬇ Download install.sb](https://github.com/hakalachi/streamerbot-soclip/releases/latest/download/install.sb)** · see [CHANGELOG.md](CHANGELOG.md) for what's new.
 
 **Shoutouts that actually show the streamer.** Type `!so somestreamer` (or get raided) and one of their best Twitch clips plays right on your stream — with their name and the game they were last playing — while a shoutout message goes to chat.
 
@@ -16,7 +16,7 @@ Designed for non-technical streamers. No developer accounts, no API keys, no aut
 
 ### Step 1 — Import into Streamer.bot (~1 minute)
 
-1. Download **[install.sb](https://raw.githubusercontent.com/hakalachi/streamerbot-soclip/main/install.sb)** (right-click the link → *Save link as…*).
+1. Download **[install.sb](https://github.com/hakalachi/streamerbot-soclip/releases/latest/download/install.sb)** (clicking the link downloads it).
 2. In Streamer.bot, click the **Import** button at the top. Drag `install.sb` into the dialog (or open it in Notepad and paste the contents). Click **Import**.
 3. You now have a **SoClip - Shoutout** action with the `!so` and `!soclip` commands already bound.
 
