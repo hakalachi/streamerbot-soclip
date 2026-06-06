@@ -4,6 +4,10 @@
 
 **Shoutouts that actually show the streamer.** Type `!so somestreamer` (or get raided) and one of their best Twitch clips plays right on your stream — with their name and the game they were last playing — while a shoutout message goes to chat.
 
+![SoClip overlay sliding in and playing a clip](docs/demo.gif)
+
+*(shown in `test` mode — a real shoutout plays the streamer's actual top clip in the video area)*
+
 Designed for non-technical streamers. No developer accounts, no API keys, no auth pages: Streamer.bot is already connected to Twitch, and that's all this needs. Setup is importing one file and adding one browser source. About 5 minutes.
 
 ---
