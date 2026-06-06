@@ -2,6 +2,29 @@
 
 All notable changes to this project. Versioning follows [SemVer](https://semver.org/).
 
+## v1.1.1 — 2026-06-05
+
+Two overlay fixes that together caused "chat works, but no clip ever plays"
+inside OBS — found and verified live against a real Streamer.bot 1.0.4 + OBS:
+
+- **Auth now works inside OBS browser sources.** OBS serves Local-file
+  sources from an insecure origin where the browser's `crypto.subtle` API
+  doesn't exist, so the overlay silently failed the authentication handshake
+  and Streamer.bot dropped it 30s later (close 4006) — over and over. The
+  SHA-256 needed for the handshake is now computed in plain JS when
+  `crypto.subtle` is unavailable.
+- **Subscribe to broadcasts.** Streamer.bot 1.x only delivers
+  `WebsocketBroadcastJson` payloads to clients *subscribed* to the
+  `General → Custom` event, wrapped in an event envelope — a plain connected
+  (even authenticated) client receives nothing. The overlay now subscribes
+  after connecting and unwraps the envelope, while still accepting the raw
+  payloads older Streamer.bot versions send to everyone.
+- The status badge now shows Streamer.bot's own close reasons verbatim
+  (e.g. "Did not receive Authenticate request within 30s") and auth errors
+  can no longer fail without surfacing on the badge.
+- `install.sb` / the Streamer.bot action are unchanged — just replace
+  `overlay.html` and refresh the browser source.
+
 ## v1.1.0 — 2026-06-05
 
 Overlay settings now live in a friendly `config.js` instead of URL query strings.

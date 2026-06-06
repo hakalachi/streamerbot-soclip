@@ -1,6 +1,6 @@
 # streamerbot-soclip
 
-**Current version: v1.1.0** — **[⬇ Download install.sb](https://github.com/hakalachi/streamerbot-soclip/releases/latest/download/install.sb)** · see [CHANGELOG.md](CHANGELOG.md) for what's new.
+**Current version: v1.1.1** — **[⬇ Download install.sb](https://github.com/hakalachi/streamerbot-soclip/releases/latest/download/install.sb)** · see [CHANGELOG.md](CHANGELOG.md) for what's new.
 
 **Shoutouts that actually show the streamer.** Type `!so somestreamer` (or get raided) and one of their best Twitch clips plays right on your stream — with their name and the game they were last playing — while a shoutout message goes to chat.
 
