@@ -2,6 +2,24 @@
 
 All notable changes to this project. Versioning follows [SemVer](https://semver.org/).
 
+## v1.1.0 — 2026-06-05
+
+Overlay settings now live in a friendly `config.js` instead of URL query strings.
+
+- **New `config.js`** — sits next to `overlay.html`; every setting (port,
+  password, host, position, width, volume, test mode) is listed with a
+  plain-English comment. Edit in Notepad, save, refresh the browser source.
+  No more unticking *Local file* to sneak options into a `file:///` URL.
+- URL query options still work and **override** `config.js` (handy for a quick
+  `?test=1`). `config.js` is optional — without it the old defaults apply, so
+  existing setups keep working unchanged.
+- If an edit breaks `config.js` (lost quote/comma), the overlay's status badge
+  says so instead of silently falling back to defaults.
+- Overlay hint messages (password missing/wrong, test clip) now point at
+  `config.js` instead of the source URL.
+- `install.sb` / the Streamer.bot action are unchanged — no re-import needed;
+  just replace `overlay.html` and add `config.js` next to it.
+
 ## v1.0.0 — 2026-06-05
 
 Initial release.

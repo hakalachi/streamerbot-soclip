@@ -10,8 +10,7 @@
   (e.g. 1920x1080). It connects to Streamer.bot's WebSocket server and plays
   the clips that the "SoClip - Shoutout" action sends it.
 
-  Options go in the URL query string of the browser source, e.g.
-      overlay.html?position=center&width=560&volume=0.8
+  Settings live in config.js (same folder as this file) — edit that, not this.
 
     position  center | top | bottom | top-left | top-right | bottom-left | bottom-right   (default: center)
     width     card width in px, 240–1280                                                  (default: 480)
@@ -19,7 +18,11 @@
     host      Streamer.bot WebSocket host                                                 (default: 127.0.0.1)
     port      Streamer.bot WebSocket port                                                 (default: 8080)
     password  only needed if the WebSocket server has Authentication enabled
-    test=1    repeat a fake clip so you can position the card without firing chat
+    test      true = repeat a fake clip so you can position the card without firing chat
+
+  The same names also work as URL query options (overlay.html?port=8990&test=1)
+  and take priority over config.js. config.js is optional — without it the
+  defaults above apply.
 -->
 <style>
   :root {
@@ -118,18 +121,33 @@
   </div>
   <div id="status"></div>
 
+<script src="config.js" onerror="window.SOCLIP_NO_CONFIG = true"></script>
 <script>
 (function () {
   "use strict";
 
+  // config.js sets window.SOCLIP. If the file loaded but didn't set it,
+  // someone's edit broke it (missing quote/comma) — warn instead of
+  // silently running with defaults.
+  var cfg = window.SOCLIP || {};
+  var cfgBroken = !window.SOCLIP && !window.SOCLIP_NO_CONFIG;
+
+  // URL query options override config.js, which overrides the defaults.
   var qs = new URLSearchParams(location.search);
-  var HOST     = qs.get("host") || "127.0.0.1";
-  var PORT     = qs.get("port") || "8080";
-  var PASSWORD = qs.get("password") || "";
-  var VOLUME   = Math.min(1, Math.max(0, parseFloat(qs.get("volume") || "0.85")));
-  var WIDTH    = Math.min(1280, Math.max(240, parseInt(qs.get("width") || "480", 10)));
-  var POSITION = qs.get("position") || "center";
-  var TEST     = qs.get("test") === "1";
+  function opt(name, fallback) {
+    var v = qs.get(name);
+    if (v !== null && v !== "") return v;
+    if (cfg[name] !== undefined && cfg[name] !== null && cfg[name] !== "") return String(cfg[name]);
+    return fallback;
+  }
+
+  var HOST     = opt("host", "127.0.0.1");
+  var PORT     = opt("port", "8080");
+  var PASSWORD = opt("password", "");
+  var VOLUME   = Math.min(1, Math.max(0, parseFloat(opt("volume", "0.85"))));
+  var WIDTH    = Math.min(1280, Math.max(240, parseInt(opt("width", "480"), 10)));
+  var POSITION = opt("position", "center");
+  var TEST     = opt("test", "") === "1" || opt("test", "") === "true";
 
   document.documentElement.style.setProperty("--card-w", WIDTH + "px");
   if (POSITION !== "center") document.getElementById("stage").className = POSITION;
@@ -142,6 +160,12 @@
   var statusEl = document.getElementById("status");
 
   function status(text, bad) {
+    // A broken config.js means we're running on defaults the user didn't
+    // choose — keep saying so, even when the connection itself is fine.
+    if (!text && cfgBroken) {
+      text = "config.js has an error in it, so your settings are being ignored — check your last edit (missing quote or comma?)";
+      bad = true;
+    }
     if (!text) { statusEl.className = ""; return; }
     statusEl.textContent = "SoClip: " + text;
     statusEl.className = "visible" + (bad ? " bad" : "");
@@ -230,7 +254,7 @@
       // "Require authentication" is enabled on the WebSocket server.
       if (msg.authentication && msg.authentication.challenge) {
         if (!PASSWORD) {
-          status("server wants a password — add &password=... to this source URL, or untick Authentication on the WebSocket server", true);
+          status("server wants a password — put it in config.js (password: \"...\"), or untick Authentication on the WebSocket server", true);
           return;
         }
         authenticate(msg.authentication.salt, msg.authentication.challenge);
@@ -252,7 +276,7 @@
       if (ev && ev.code === 4009) {
         status(PASSWORD
           ? "wrong WebSocket password"
-          : "server wants a password — add &password=... to this source URL, or untick Authentication on the WebSocket server", true);
+          : "server wants a password — put it in config.js (password: \"...\"), or untick Authentication on the WebSocket server", true);
       } else {
         status("can't reach Streamer.bot — is the WebSocket Server running? (Servers/Clients → WebSocket Server)", true);
       }
@@ -312,7 +336,7 @@
       ctx.fillText("SoClip test clip", 640, 340);
       ctx.font = "28px 'Segoe UI', sans-serif";
       ctx.fillStyle = "#adadb8";
-      ctx.fillText("a real clip plays here — size & position me, then remove ?test=1", 640, 400);
+      ctx.fillText("a real clip plays here — size & position me, then turn test off in config.js", 640, 400);
       requestAnimationFrame(draw);
     })(t0);
     return {
