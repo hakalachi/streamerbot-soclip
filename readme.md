@@ -1,6 +1,6 @@
 # streamerbot-soclip
 
-**Current version: v1.1.1** — **[⬇ Download install.sb](https://github.com/hakalachi/streamerbot-soclip/releases/latest/download/install.sb)** · see [CHANGELOG.md](CHANGELOG.md) for what's new.
+**Current version: v1.2.0** — **[⬇ Download install.sb](https://github.com/hakalachi/streamerbot-soclip/releases/latest/download/install.sb)** · see [CHANGELOG.md](CHANGELOG.md) for what's new.
 
 **Shoutouts that actually show the streamer.** Type `!so somestreamer` (or get raided) and one of their best Twitch clips plays right on your stream — with their name and the game they were last playing — while a shoutout message goes to chat.
 
@@ -53,8 +53,17 @@ host: "127.0.0.1",   // only if Streamer.bot runs on a different computer
 position: "center",  // center, top, bottom, top-left, top-right, bottom-left, bottom-right
 width: 480,          // card width in pixels (240-1280)
 volume: 0.85,        // clip volume: 0.0 (mute) to 1.0 (full)
+accent: "#9146ff",   // frame + name color -- any CSS color, e.g. "#ff4757", "gold"
+font: "",            // any Google Font name ("Poppins", "Bangers") or installed font
 test: false          // true = loop a fake clip so you can position the card
 ```
+
+**Make it match your brand:** `accent` recolors the frame, banner line, avatar
+ring and highlights — any CSS color works. `font` swaps the banner typeface:
+give it any name from [fonts.google.com](https://fonts.google.com) (it loads
+automatically, nothing to install) or any font already installed on your PC.
+Set `test: true` while you experiment so you can see changes after each
+refresh without touching chat.
 
 Change what you need, save, then tell OBS to reload it: right-click the `SoClip` source → **Properties** → **Refresh cache of current page**.
 
@@ -71,7 +80,7 @@ Every `config.js` setting also works as a query option on the source URL, and UR
 file:///C:/path/to/overlay.html?port=8990&password=hunter2&position=bottom-right&test=1
 ```
 
-Handy for a quick `test=1` without editing the file, or for running two overlays with different settings from the same folder.
+Handy for a quick `test=1` without editing the file, or for running two overlays with different settings from the same folder. (URL-encode `#` in colors: `accent=%23ff4757`.)
 
 </details>
 
@@ -122,6 +131,7 @@ Change values, click **Compile**, close. Done.
 | Tiny red badge in the overlay's top-left corner | That's the overlay telling you exactly what's wrong (can't reach Streamer.bot / wrong password / broken `config.js`). Fix what it says; it disappears when healthy. |
 | "Couldn't find a Twitch channel called …" | Typo in the name, or the account is banned/deleted. |
 | Clip plays but silent | In OBS, check the source's **Control audio via OBS** setting and the mixer. Also check `volume` in `config.js`. |
+| Custom `font` doesn't show | Check the exact spelling on [fonts.google.com](https://fonts.google.com) (e.g. `"Comic Neue"`, not `"Comic Neu"`), then refresh the source cache. Fonts installed on your PC work by their installed name. |
 | Shoutout works for some channels but is chat-only for others | That channel has no clips, or none under `MaxClipSeconds`. Check the Streamer.bot **Logs** tab for `[SoClip]` lines — it says why. |
 | Nothing at all, not even chat | Is Streamer.bot connected to Twitch? Open the action's **Run History** — did the trigger fire? Logs tab → look for `[SoClip]` errors. |
 | Raids don't trigger it | Did you add the Raid trigger? (Step 6 — it's manual on purpose, some people don't want it.) |

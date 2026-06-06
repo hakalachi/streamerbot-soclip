@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -15,6 +15,8 @@
     position  center | top | bottom | top-left | top-right | bottom-left | bottom-right   (default: center)
     width     card width in px, 240–1280                                                  (default: 480)
     volume    0.0 – 1.0                                                                   (default: 0.85)
+    accent    frame/name color — any CSS color, e.g. "#ff4757"                            (default: Twitch purple)
+    font      banner font — any Google Font name (auto-loaded) or installed font          (default: system)
     host      Streamer.bot WebSocket host                                                 (default: 127.0.0.1)
     port      Streamer.bot WebSocket port                                                 (default: 8080)
     password  only needed if the WebSocket server has Authentication enabled
@@ -26,7 +28,8 @@
 -->
 <style>
   :root {
-    --purple: #9146ff;
+    --accent: #9146ff;        /* frame/name color — config.js `accent` */
+    --accent-soft: #d6c7ff;   /* pale tint of the accent, derived in JS */
     --card-w: 480px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -62,7 +65,7 @@
     border-radius: 14px;
     overflow: hidden;
     background: #0e0e10;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 0 0 3px var(--purple);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 0 0 3px var(--accent);
   }
   #video { display: block; width: 100%; aspect-ratio: 16/9; object-fit: contain; background: #000; }
 
@@ -72,20 +75,20 @@
     gap: 12px;
     padding: 10px 14px;
     background: linear-gradient(135deg, #1f1530 0%, #18181b 60%);
-    border-top: 2px solid var(--purple);
+    border-top: 2px solid var(--accent);
   }
   #avatar {
     width: 44px; height: 44px;
     border-radius: 50%;
-    border: 2px solid var(--purple);
+    border: 2px solid var(--accent);
     background: #26262c;
     flex: none;
   }
   #who { min-width: 0; color: #efeff1; }
   #name { font-size: 19px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #name .at { color: var(--purple); }
+  #name .at { color: var(--accent); }
   #game { font-size: 13px; color: #adadb8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #game b { color: #d6c7ff; font-weight: 600; }
+  #game b { color: var(--accent-soft); font-weight: 600; }
 
   /* tiny status pill — only visible while there's a problem */
   #status {
@@ -148,9 +151,44 @@
   var WIDTH    = Math.min(1280, Math.max(240, parseInt(opt("width", "480"), 10)));
   var POSITION = opt("position", "center");
   var TEST     = opt("test", "") === "1" || opt("test", "") === "true";
+  var ACCENT   = opt("accent", "");
+  var FONT     = opt("font", "");
 
   document.documentElement.style.setProperty("--card-w", WIDTH + "px");
   if (POSITION !== "center") document.getElementById("stage").className = POSITION;
+
+  // ---------- branding ----------
+  // accent: any CSS color — recolors the frame, banner line, avatar ring,
+  // @ and game name (a pale tint of it is derived for the game name).
+  if (ACCENT) {
+    var probe = document.createElement("span");
+    probe.style.color = ACCENT;
+    if (probe.style.color) { // browser accepted it as a color
+      document.documentElement.style.setProperty("--accent", ACCENT);
+      probe.style.display = "none";
+      document.body.appendChild(probe);
+      var rgb = getComputedStyle(probe).color.match(/\d+(\.\d+)?/g);
+      document.body.removeChild(probe);
+      if (rgb && rgb.length >= 3) {
+        var tint = rgb.slice(0, 3).map(function (c) { return Math.round(+c + (255 - +c) * 0.6); });
+        document.documentElement.style.setProperty("--accent-soft", "rgb(" + tint.join(",") + ")");
+      }
+    } else {
+      console.warn('SoClip: accent "' + ACCENT + '" is not a valid CSS color — using the default');
+    }
+  }
+  // font: any Google Font name ("Poppins", "Bangers") — fetched at runtime —
+  // or any font installed on this machine. Falls back to the system stack.
+  if (FONT) {
+    var fam = FONT.trim().replace(/["']/g, "");
+    var fontLink = document.createElement("link");
+    fontLink.rel = "stylesheet";
+    fontLink.href = "https://fonts.googleapis.com/css2?family="
+      + encodeURIComponent(fam).replace(/%20/g, "+")
+      + ":wght@400;600;700&display=swap"; // 404s harmlessly for non-Google fonts
+    document.head.appendChild(fontLink);
+    document.body.style.fontFamily = '"' + fam + '", "Segoe UI", system-ui, -apple-system, sans-serif';
+  }
 
   var card     = document.getElementById("card");
   var video    = document.getElementById("video");

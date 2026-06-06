@@ -2,6 +2,22 @@
 
 All notable changes to this project. Versioning follows [SemVer](https://semver.org/).
 
+## v1.2.0 — 2026-06-06
+
+Brand the card to match your stream.
+
+- **New `accent` setting** — any CSS color (`"#ff4757"`, `"gold"`,
+  `"rgb(80,200,120)"`) recolors the frame, banner line, avatar ring, `@`, and
+  game-name highlight (a pale tint is derived automatically). Invalid colors
+  fall back to the default Twitch purple with a console warning.
+- **New `font` setting** — any [Google Font](https://fonts.google.com) name
+  loads automatically at runtime (nothing to install), or use any font already
+  installed on the machine. Falls back to the system stack.
+- Both work in `config.js` and as URL options (`?accent=%23ff4757&font=Bangers`).
+- Test mode now shows Twitch's stock avatar instead of a broken-image glyph.
+- `install.sb` / the Streamer.bot action are unchanged — just replace
+  `overlay.html` and `config.js` keeps working without the new keys.
+
 ## v1.1.1 — 2026-06-05
 
 Two overlay fixes that together caused "chat works, but no clip ever plays"
