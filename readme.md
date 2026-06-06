@@ -8,7 +8,7 @@
 
 *(shown in `test` mode — a real shoutout plays the streamer's actual top clip in the video area)*
 
-Designed for non-technical streamers. No developer accounts, no API keys, no auth pages: Streamer.bot is already connected to Twitch, and that's all this needs. Setup is importing one file and adding one browser source. About 5 minutes.
+Designed for non-technical streamers. No developer accounts, no API keys, no auth pages: Streamer.bot is already connected to Twitch, and that's all this needs. Setup is importing one file and adding one browser source — and all the settings live in a point-and-click page (`config.html`) with a live preview and a connection tester, so there's nothing to hand-edit. About 5 minutes.
 
 ---
 
@@ -30,8 +30,8 @@ The overlay listens to Streamer.bot over a local WebSocket.
 
 1. In Streamer.bot go to **Servers/Clients → WebSocket Server**.
 2. It should say it's running on `127.0.0.1:8080` (the default). If it isn't running, click **Start Server** and tick **Auto Start**.
-3. Using a different port (or address)? Note it — you'll put it in `config.js` in Step 4.
-4. If **Authentication** is enabled, either untick it, or note the password — you'll put it in `config.js` in Step 4.
+3. Using a different port (or address)? Note it — you'll enter it in the settings page in Step 4.
+4. If **Authentication** is enabled, either untick it, or note the password — you'll enter it in the settings page in Step 4.
 
 ### Step 3 — Add the overlay to OBS (~2 minutes)
 
@@ -78,7 +78,7 @@ Change what you need, save, then tell OBS to reload it: right-click the `SoClip`
 
 To position and size the card without spamming your chat, set `test: true` — a fake clip loops every few seconds while you drag things around. Set it back to `false` (and refresh again) when you're happy.
 
-Typos are okay: if a lost quote or comma breaks `config.js`, a small badge appears in the overlay's top-left corner saying so, instead of your settings being silently ignored.
+Typos are okay: if a lost quote or comma breaks `config.js`, a small badge appears in the overlay's top-left corner saying so, instead of your settings being silently ignored. (Files written by `config.html` can't have this problem.)
 
 <details>
 <summary><strong>Advanced: URL options instead of config.js</strong></summary>
@@ -135,12 +135,12 @@ Change values, click **Compile**, close. Done.
 
 | Symptom | Try this |
 | --- | --- |
-| Chat message appears, but no clip on stream | The overlay isn't hearing Streamer.bot. Check Step 2 (WebSocket server running?) and that `port` / `password` in `config.js` match what the server says (Step 4). |
-| I changed `config.js` but nothing happened | OBS caches the page: right-click the `SoClip` source → **Properties** → **Refresh cache of current page**. Also make sure `config.js` sits in the same folder as `overlay.html`. |
+| Chat message appears, but no clip on stream | The overlay isn't hearing Streamer.bot. Easiest check: open `config.html` and click **⚡ Test connection** — it tells you in plain English whether it's the server (Step 2), the port, or the password. |
+| I changed my settings but nothing happened | OBS caches the page: right-click the `SoClip` source → **Properties** → **Refresh cache of current page**. Also make sure `config.js` sits in the same folder as `overlay.html` (if you used `config.html`'s download fallback, move the new file there). |
 | Tiny red badge in the overlay's top-left corner | That's the overlay telling you exactly what's wrong (can't reach Streamer.bot / wrong password / broken `config.js`). Fix what it says; it disappears when healthy. |
 | "Couldn't find a Twitch channel called …" | Typo in the name, or the account is banned/deleted. |
-| Clip plays but silent | In OBS, check the source's **Control audio via OBS** setting and the mixer. Also check `volume` in `config.js`. |
-| Custom `font` doesn't show | Check the exact spelling on [fonts.google.com](https://fonts.google.com) (e.g. `"Comic Neue"`, not `"Comic Neu"`), then refresh the source cache. Fonts installed on your PC work by their installed name. |
+| Clip plays but silent | In OBS, check the source's **Control audio via OBS** setting and the mixer. Also check the volume slider in `config.html` (or `volume` in `config.js`). |
+| Custom `font` doesn't show | Type it in `config.html` — the live preview shows immediately whether the name is right (check spelling on [fonts.google.com](https://fonts.google.com), e.g. `"Comic Neue"`, not `"Comic Neu"`). Then save and refresh the source cache. Fonts installed on your PC work by their installed name. |
 | Shoutout works for some channels but is chat-only for others | That channel has no clips, or none under `MaxClipSeconds`. Check the Streamer.bot **Logs** tab for `[SoClip]` lines — it says why. |
 | Nothing at all, not even chat | Is Streamer.bot connected to Twitch? Open the action's **Run History** — did the trigger fire? Logs tab → look for `[SoClip]` errors. |
 | Raids don't trigger it | Did you add the Raid trigger? (Step 6 — it's manual on purpose, some people don't want it.) |
